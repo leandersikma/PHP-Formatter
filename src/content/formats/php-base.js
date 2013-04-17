@@ -1,6 +1,18 @@
 var subScriptLoader = Components.classes["@mozilla.org/moz/jssubscript-loader;1"].getService(Components.interfaces.mozIJSSubScriptLoader);
 subScriptLoader.loadSubScript('chrome://selenium-ide/content/formats/remoteControl.js', this);
 
+function formatExpression(expression) {
+	if(typeof expression == 'string' || expression instanceof String) {
+    	var indexMatch = expression.indexOf("+");
+	    while(indexMatch != -1) {
+	        expression = expression.replace("+", ".");
+	        indexMatch = expression.indexOf("+");
+	    }
+	}
+    
+    return expression;
+}
+
 function testMethodName(testName) {
     return "test" + capitalize(testName);
 }
@@ -30,17 +42,17 @@ function joinExpression(expression) {
 }
 
 function assignToVariable(type, variable, expression) {
-    return "$" + variable + " = " + expression.toString();
+    return "$this->var['" + variable + "'] = " + formatExpression(expression.toString());
 }
 
 //Samit: Fix: Issue 970 Variable reference missing a '$'
 variableName = function(value) {
-    return "$" + value;
+    return "$this->var['" + value + "']";
 };
 
 function waitFor(expression) {
     return "for ($second = 0; ; $second++) {\n" +
-        indent(1) + 'if ($second >= 60) $this->fail("timeout");\n' +
+        indent(1) + 'if ($second >= 300) $this->fail("timeout");\n' +
         indent(1) + "try {\n" +
         indent(2) + (expression.setup ? expression.setup() + " " : "") +
         indent(2) + "if (" + expression.toString() + ") break;\n" +
@@ -96,7 +108,9 @@ function pause(milliseconds) {
 };
 
 function echo(message) {
-    return "print(" + xlateArgument(message) + ' . "\\n");';
+	var print = '//print statements causes failures in PHPUnit. \n'
+	print += "//print(" + xlateArgument(message) + ' . "\\n");';
+    return print;
 };
 
 function statement(expression) {
@@ -128,12 +142,16 @@ CallSelenium.prototype.toString = function() {
     result += this.message;
     result += '(';
     for (var i = 0; i < this.args.length; i++) {
+        
+        this.args[i] = formatExpression(this.args[i]);
         result += this.args[i];
+
         if (i < this.args.length - 1) {
             result += ', ';
         }
     }
     result += ')';
+    // dump(result + "\n");
     return result;
 };
 
@@ -143,14 +161,128 @@ function formatComment(comment) {
         });
 }
 
+function format(testCase, name) {
+	if(name.toLowerCase() == 'setup') {
+		this.setup = formatCommands(testCase.commands);
+	} else {
+		this.log.info("formatting testCase: " + name);
+		var result = '';
+		var header = "";
+		var footer = "";
+		this.commandCharIndex = 0;
+		if (this.formatHeader) {
+			header = formatHeader(testCase);
+		}
+		result += header;
+		this.commandCharIndex = header.length;
+		testCase.formatLocal(this.name).header = header;
+		result += formatCommands(testCase.commands);
+		if (this.formatFooter) {
+			footer = formatFooter(testCase);
+		}
+		result += footer;
+		testCase.formatLocal(this.name).footer = footer;
+		return result;
+	}
+}
+
+function formatSuite(testSuite, filename) {
+    var suiteClass = /^(\w+)/.exec(filename)[1];
+    suiteClass = suiteClass[0].toUpperCase() + suiteClass.substring(1);
+    var formattedSuite = '<?php\n' +
+    'spl_autoload_register(function ($class) {\n' +
+    'include $class . ".php";\n' +
+    '});\n';
+	
+	if(options.random_number) {
+		formattedSuite +=
+	    'class MyClass {\n\n' +
+	      indents(2) + 'public static $var;\n\n' +
+	      indents(2) + 'static function setVar($value) {\n' +
+	      indents(3) + 'self::$var = $value;\n' +
+	      indents(2) + '}\n' +
+	      indents(2) + 'static function getVar() {\n' +
+	      indents(3) + 'return self::$var;\n' +
+	      indents(2) + '}\n' +
+	      '}\n' +
+	    'MyClass::setVar(rand(0, 10000));\n';
+	}
+
+	formattedSuite +=
+    'class TestSuite extends PHPUnit_Extensions_SeleniumTestCase\n' +
+    '{\n\n' +
+    indents(1) + 'protected $captureScreenshotOnFailure = ${capture_on_failure};\n' +
+    indents(1) + 'protected $screenshotPath = "${screenshot_path}";\n' +
+    indents(1) + 'protected $screenshotUrl = "${screenshot_url}";\n' +
+    indents(1) + 'protected $coverageScriptUrl = "${cc_url}";\n\n';
+	dump(options.random_number);
+	if(options.random_number) {
+		formattedSuite +=
+	    indents(1) + 'function __construct($name = NULL, array $data = array(), $dataName = "") {\n' +
+	    indents(2) + 'parent::__construct($name, $data, $dataName);\n' +
+	    indents(2) + '$this->rand = MyClass::getVar();\n' +
+	    indents(1) + '}\n\n';
+	}
+
+	formattedSuite +=
+    indents(1) + 'protected function setUp()\n' +
+       indents(1) + '{\n' +
+       indents(2) + '$this->setBrowser("${environment}");\n' +
+       indents(2) + '$this->setBrowserUrl("${browser_url}");\n';
+	for (var i = 0; i < testSuite.tests.length; ++i) {
+		var testClass = testSuite.tests[i].getTitle();
+		if(testClass.toLowerCase() == 'setup') {
+			formattedSuite += formatCommands(testSuite.tests[i]);
+		}
+	}
+
+	formattedSuite +=
+       indents(1) + '}\n\n';
+
+    for (var i = 0; i < testSuite.tests.length; ++i) {
+      var testClass = testSuite.tests[i].getTitle();
+
+      formattedSuite += indents(1) + 'public function test' + testClass + '()\n' +
+        indents(1) + '{\n' +
+        indents(2) + testClass + "::execute();\n" +
+        indents(1) + '}\n';
+    }
+
+    formattedSuite += 
+    '}\n' +
+    '?>';
+
+	formattedSuite = formattedSuite.replace(/\$\{([a-zA-Z0-9_]+)\}/g, function(str, name) { return options[name]; });
+
+    return formattedSuite;
+}
+
 this.options = {
+	browser_url: 'localhost',
+	random_number: true,
+	capture_on_failure: true,
+	screenshot_path: '/tmp',
+	screenshot_url: '',
+	cc_url: '',
     receiver: "$this",
-    environment: "*chrome",
+    environment: "*firefox",
     indent: "2",
     initialIndents: '2'
 };
 
 this.configForm = 
+	'<description>Browse URL</description>' +
+	'<textbox id="options_browser_url"></textbox>' +
+	'<description>Random number</description>' +
+	'<checkbox id="options_random_number"></checkbox>' +
+	'<description>Capture screenshot on failure</description>' +
+	'<checkbox id="options_capture_on_failure"></checkbox>' +
+	'<description>Screenshotpath</description>' +
+	'<textbox id="options_screenshot_path"></textbox>' +
+	'<description>Screenshot URL</description>' +
+	'<textbox id="options_screenshot_url"></textbox>'+
+	'<description>Coveragescript URL</description>' +
+	'<textbox id="options_cc_url"></textbox>' +
     '<description>Variable for Selenium instance</description>' +
     '<textbox id="options_receiver" />' +
     '<description>Environment</description>' +

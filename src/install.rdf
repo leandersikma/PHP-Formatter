@@ -4,8 +4,8 @@
     <Description about="urn:mozilla:install-manifest">
         <em:id>phpformatters@seleniumhq.org</em:id>
         <em:name>Selenium IDE: PHP Formatters</em:name>
-        <em:version>1.3.2</em:version>
-        <em:creator>Dan Chan</em:creator>
+        <em:version>1.4.0</em:version>
+        <em:creator>Leander Sikma</em:creator>
         <em:description>PHP code formatters for Selenium IDE</em:description>
         <em:type>2</em:type>
         <em:homepageURL>http://seleniumhq.org/projects/ide</em:homepageURL>
@@ -14,7 +14,7 @@
           <Description>
             <em:id>{ec8030f7-c20a-464f-9b0e-13a3a9e97384}</em:id> <!-- firefox -->
             <em:minVersion>3.0</em:minVersion>
-            <em:maxVersion>11.*</em:maxVersion>
+            <em:maxVersion>20.*</em:maxVersion>
           </Description>
         </em:targetApplication>
 

@@ -20,7 +20,12 @@ Equals.prototype.verify = function() {
 };
 
 function verifyText(want, got) {
-    return '$this->verifyText("' + got.slice(got.indexOf('"') +1, got.lastIndexOf('"')) + '", ' + want + ');';
+	if(got.indexOf('$this->var') && (got.indexOf('"') < got.indexOf(']'))) {
+		got = got.slice(got.indexOf('"'), got.lastIndexOf(']') +1);
+	} else {
+		got = got.slice(got.indexOf('"'), got.lastIndexOf('"') +1);
+	}
+    return '$this->verifyText(' + got + ', ' + want + ');';
 }
 
 function verifyTrue(expression) {
@@ -32,20 +37,38 @@ function verifyTrue(expression) {
 
 function verifyTextPresent(expression) {
     e = expression.toString();
-    return  '$this->verifyTextPresent("' + e.slice(e.indexOf('"') +1, e.lastIndexOf('"')) + '");';
+    // return  '$this->verifyTextPresent("' + e.slice(e.indexOf('"') +1, e.lastIndexOf('"')) + '");';
+	return  '$this->verifyTextPresent('+ e +');';
 }
+
+function formatHeader(testCase) {
+    var className = testCase.getTitle();
+	if (!className) {
+		className = "NewTest";
+	}
+	className = className.replace(' ', '_');
+	className = className.toLowerCase();
+	var formatLocal = testCase.formatLocal(this.name);
+	methodName = testMethodName(className.replace(/Test$/, "").replace(/^Test/, "").
+								replace(/^[A-Z]/, function(str) { return str.toLowerCase(); }));
+	methodName = methodName.replace(' ', '_');
+	methodName = methodName.toLowerCase();
+	var header = (options.getHeader ? options.getHeader() : options.header).
+		replace(/\$\{className\}/g, className).
+		replace(/\$\{methodName\}/g, methodName).
+		replace(/\$\{baseURL\}/g, testCase.getBaseURL()).
+		replace(/\$\{([a-zA-Z0-9_]+)\}/g, function(str, name) { return options[name]; });
+	this.lastIndent = indents(parseInt(options.initialIndents, 10));
+	formatLocal.header = header;
+	return formatLocal.header;
+}
+
 
 options.header =
     '<?php\n' +
-    'class Example extends PHPUnit_Extensions_SeleniumTestCase\n' +
+    'class ${className} extends PHPUnit_Extensions_SeleniumTestCase\n' +
     '{\n' +
-    indents(1) + 'protected function setUp()\n' +
-    indents(1) + '{\n' +
-    indents(2) + '${receiver}->setBrowser("${environment}");\n' +
-    indents(2) + '${receiver}->setBrowserUrl("${baseURL}");\n' +
-    indents(1) + '}\n' +
-    '\n' +
-    indents(1) + 'public function testMyTestCase()\n' +
+    indents(1) + 'public function execute()\n' +
     indents(1) + '{\n';
 
 options.footer =
