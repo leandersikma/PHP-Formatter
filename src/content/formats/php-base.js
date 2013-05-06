@@ -1,5 +1,6 @@
 var subScriptLoader = Components.classes["@mozilla.org/moz/jssubscript-loader;1"].getService(Components.interfaces.mozIJSSubScriptLoader);
-subScriptLoader.loadSubScript('chrome://selenium-ide/content/formats/remoteControl.js', this);
+// subScriptLoader.loadSubScript('chrome://selenium-ide/content/formats/remoteControl.js', this);
+subScriptLoader.loadSubScript('chrome://php-formatters/content/formats/remote.js', this);
 
 function formatExpression(expression) {
 	if(typeof expression == 'string' || expression instanceof String) {
@@ -161,31 +162,6 @@ function formatComment(comment) {
         });
 }
 
-function format(testCase, name) {
-	if(name.toLowerCase() == 'setup') {
-		this.setup = formatCommands(testCase.commands);
-	} else {
-		this.log.info("formatting testCase: " + name);
-		var result = '';
-		var header = "";
-		var footer = "";
-		this.commandCharIndex = 0;
-		if (this.formatHeader) {
-			header = formatHeader(testCase);
-		}
-		result += header;
-		this.commandCharIndex = header.length;
-		testCase.formatLocal(this.name).header = header;
-		result += formatCommands(testCase.commands);
-		if (this.formatFooter) {
-			footer = formatFooter(testCase);
-		}
-		result += footer;
-		testCase.formatLocal(this.name).footer = footer;
-		return result;
-	}
-}
-
 function formatSuite(testSuite, filename) {
     var suiteClass = /^(\w+)/.exec(filename)[1];
     suiteClass = suiteClass[0].toUpperCase() + suiteClass.substring(1);
@@ -193,8 +169,7 @@ function formatSuite(testSuite, filename) {
     'spl_autoload_register(function ($class) {\n' +
     'include $class . ".php";\n' +
     '});\n';
-	
-	if(options.random_number) {
+	if(options.random_number == "true") {
 		formattedSuite +=
 	    'class MyClass {\n\n' +
 	      indents(2) + 'public static $var;\n\n' +
@@ -215,8 +190,8 @@ function formatSuite(testSuite, filename) {
     indents(1) + 'protected $screenshotPath = "${screenshot_path}";\n' +
     indents(1) + 'protected $screenshotUrl = "${screenshot_url}";\n' +
     indents(1) + 'protected $coverageScriptUrl = "${cc_url}";\n\n';
-	dump(options.random_number);
-	if(options.random_number) {
+
+	if(options.random_number == "true") {
 		formattedSuite +=
 	    indents(1) + 'function __construct($name = NULL, array $data = array(), $dataName = "") {\n' +
 	    indents(2) + 'parent::__construct($name, $data, $dataName);\n' +
@@ -232,7 +207,9 @@ function formatSuite(testSuite, filename) {
 	for (var i = 0; i < testSuite.tests.length; ++i) {
 		var testClass = testSuite.tests[i].getTitle();
 		if(testClass.toLowerCase() == 'setup') {
-			formattedSuite += formatCommands(testSuite.tests[i]);
+			if(this.setup) {
+				formattedSuite += this.setup;
+			}
 		}
 	}
 
@@ -240,21 +217,50 @@ function formatSuite(testSuite, filename) {
        indents(1) + '}\n\n';
 
     for (var i = 0; i < testSuite.tests.length; ++i) {
-      var testClass = testSuite.tests[i].getTitle();
-
-      formattedSuite += indents(1) + 'public function test' + testClass + '()\n' +
-        indents(1) + '{\n' +
-        indents(2) + testClass + "::execute();\n" +
-        indents(1) + '}\n';
+    	var testClass = testSuite.tests[i].getTitle();
+		if(testClass.toLowerCase() != 'setup') {
+      		formattedSuite += indents(1) + 'public function test' + testClass + '()\n' +
+        	indents(1) + '{\n' +
+        	indents(2) + testClass + "::testExecute();\n" +
+        	indents(1) + '}\n';
+		}
     }
 
     formattedSuite += 
     '}\n' +
     '?>';
-
 	formattedSuite = formattedSuite.replace(/\$\{([a-zA-Z0-9_]+)\}/g, function(str, name) { return options[name]; });
 
     return formattedSuite;
+}
+
+
+function format(testCase, name) {
+	if(name.toLowerCase() == 'setup') {
+		this.setup = formatCommands(testCase.commands);
+		if(options.random_number == "true") {
+			this.setup = this.setup.replace('$this->getEval("Math.round(Math.random()*100000)");', '$this->rand;');
+		}
+	} else {
+		this.log.info("formatting testCase: " + name);
+		var result = '';
+		var header = "";
+		var footer = "";
+		this.commandCharIndex = 0;
+		if (this.formatHeader) {
+			header = formatHeader(testCase);
+		}
+		result += header;
+		this.commandCharIndex = header.length;
+		testCase.formatLocal(this.name).header = header;
+		result += formatCommands(testCase.commands);
+		if (this.formatFooter) {
+			footer = formatFooter(testCase);
+		}
+		result += footer;
+		testCase.formatLocal(this.name).footer = footer;
+		return result;
+	}
 }
 
 this.options = {

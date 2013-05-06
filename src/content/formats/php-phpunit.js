@@ -68,7 +68,7 @@ options.header =
     '<?php\n' +
     'class ${className} extends PHPUnit_Extensions_SeleniumTestCase\n' +
     '{\n' +
-    indents(1) + 'public function execute()\n' +
+    indents(1) + 'public function testExecute()\n' +
     indents(1) + '{\n';
 
 options.footer =

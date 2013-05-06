@@ -9,9 +9,7 @@
     <script type="application/x-javascript" src="chrome://php-formatters/content/formats/php-testingselenium.js"/>
     <html:script type="application/javascript">
         var ide_api = new API();
-        ide_api.addPlugin("phpformatters@seleniumhq.org");
-        ide_api.addPluginProvidedFormatter("phpunitformatter", "PHP (PHPUnit)", "chrome://php-formatters/content/formats/php-phpunit.js");
-        ide_api.addPluginProvidedFormatter("phptestingseleniumformatter", "PHP (Testing_Selenium)", "chrome://php-formatters/content/formats/php-testingselenium.js");
-
+        ide_api.addPlugin("formatter@paydro");
+        ide_api.addPluginProvidedFormatter("phpunitformatter", "PHP", "chrome://php-formatters/content/formats/php-phpunit.js");
     </html:script>
 </overlay>

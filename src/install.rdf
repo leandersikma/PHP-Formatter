@@ -2,11 +2,11 @@
 <RDF xmlns="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
  xmlns:em="http://www.mozilla.org/2004/em-rdf#">
     <Description about="urn:mozilla:install-manifest">
-        <em:id>phpformatters@seleniumhq.org</em:id>
+        <em:id>formatter@paydro</em:id>
         <em:name>Selenium IDE: PHP Formatters</em:name>
         <em:version>1.4.0</em:version>
         <em:creator>Leander Sikma</em:creator>
-        <em:description>PHP code formatters for Selenium IDE</em:description>
+        <em:description>PHP code formatter for Selenium IDE. Original code from Dan Chan.</em:description>
         <em:type>2</em:type>
         <em:homepageURL>http://seleniumhq.org/projects/ide</em:homepageURL>
 
